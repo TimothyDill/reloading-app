@@ -1,269 +1,114 @@
-package com.drakkar.reloading.storage
+package com.drakkar.reloading.core.inventory
 
-import com.drakkar.reloading.core.inventory.InventoryRepository
 import com.drakkar.reloading.core.model.*
-import com.drakkar.reloading.core.util.IdGenerator
 import java.io.File
 
-class FileInventoryRepository : InventoryRepository {
+class FileInventoryRepository {
 
-    private val baseDir = File(System.getProperty("user.home"), "InventoryAndReloadingHub/data").apply {
-        mkdirs()
-    }
-
-    private val bullets = mutableListOf<Bullet>()
-    private val powders = mutableListOf<Powder>()
-    private val primers = mutableListOf<Primer>()
-    private val cases = mutableListOf<Case>()
-    private val rounds = mutableListOf<LoadedRound>()
+    private val baseDir = File(System.getProperty("user.dir"), "data")
 
     init {
-        loadAll()
+        baseDir.mkdirs()
     }
 
-    // ================= BULLETS =================
+    // =========================================================
+    // PRIMER FIX (PrimerSize ENFORCED)
+    // =========================================================
 
-    override fun addBullet(
-        brand: String,
-        name: String,
-        weightGr: Double,
-        diameterIn: Double,
-        cost: Double,
-        qty: Int
-    ) {
+    fun parsePrimerSize(value: String): PrimerSize {
+        return PrimerSize.valueOf(value.trim().uppercase())
+    }
+
+    // =========================================================
+    // BULLET CSV FIX
+    // =========================================================
+
+    fun loadBullets(): List<Bullet> {
         val file = File(baseDir, "bullet.csv")
-        val id = IdGenerator.nextId(file, brand)
+        if (!file.exists()) return emptyList()
 
-        bullets.add(Bullet(id, brand, name, weightGr, diameterIn, cost, qty))
-        saveBullets()
-    }
-
-    override fun getBullets() = bullets.toList()
-
-    private fun saveBullets() {
-        File(baseDir, "bullet.csv").writeText(
-            "ID,Brand,Name,WeightGr,DiameterIn,CostPerUnit,Quantity\n" +
-                    bullets.joinToString("\n") {
-                        "${it.id},${it.brand},${it.name},${it.weightGr},${it.diameterIn},${it.costPerUnit},${it.quantity}"
-                    }
-        )
-    }
-
-    private fun loadBullets() {
-        val file = File(baseDir, "bullet.csv")
-        if (!file.exists()) return
-
-        file.readLines().drop(1).forEach {
+        return file.readLines().drop(1).mapNotNull {
             val p = it.split(",")
-            if (p.size < 7) return@forEach
+            if (p.size != 7) return@mapNotNull null
 
-            bullets.add(
-                Bullet(
-                    p[0], p[1], p[2],
-                    p[3].toDouble(),
-                    p[4].toDouble(),
-                    p[5].toDouble(),
-                    p[6].toInt()
-                )
+            Bullet(
+                p[0], p[1], p[2],
+                p[3].toDouble(),
+                p[4].toDouble(),
+                p[5].toDouble(),
+                p[6].toInt()
             )
         }
     }
 
-    // ================= POWDER =================
+    // =========================================================
+    // PRIMER CSV FIX (IMPORTANT)
+    // =========================================================
 
-    override fun addPowder(
-        brand: String,
-        name: String,
-        costPerLb: Double,
-        grainsPerLb: Int,
-        qty: Double
-    ) {
-        val file = File(baseDir, "powder.csv")
-        val id = IdGenerator.nextId(file, brand)
-
-        powders.add(Powder(id, brand, name, costPerLb, grainsPerLb, qty))
-        savePowders()
-    }
-
-    override fun getPowders() = powders.toList()
-
-    private fun savePowders() {
-        File(baseDir, "powder.csv").writeText(
-            "ID,Brand,Name,CostPerLb,GrainsPerLb,QuantityLb\n" +
-                    powders.joinToString("\n") {
-                        "${it.id},${it.brand},${it.name},${it.costPerLb},${it.grainsPerLb},${it.quantityLb}"
-                    }
-        )
-    }
-
-    private fun loadPowders() {
-        val file = File(baseDir, "powder.csv")
-        if (!file.exists()) return
-
-        file.readLines().drop(1).forEach {
-            val p = it.split(",")
-            if (p.size < 6) return@forEach
-
-            powders.add(
-                Powder(
-                    p[0], p[1], p[2],
-                    p[3].toDouble(),
-                    p[4].toInt(),
-                    p[5].toDouble()
-                )
-            )
-        }
-    }
-
-    // ================= PRIMERS =================
-
-    override fun addPrimer(
-        brand: String,
-        type: String,
-        costPer1000: Double,
-        qty: Int
-    ) {
+    fun loadPrimers(): List<Primer> {
         val file = File(baseDir, "primer.csv")
-        val id = IdGenerator.nextId(file, brand)
+        if (!file.exists()) return emptyList()
 
-        primers.add(Primer(id, brand, type, costPer1000, qty))
-        savePrimers()
-    }
-
-    override fun getPrimers() = primers.toList()
-
-    private fun savePrimers() {
-        File(baseDir, "primer.csv").writeText(
-            "ID,Brand,Type,CostPer1000,Quantity\n" +
-                    primers.joinToString("\n") {
-                        "${it.id},${it.brand},${it.type},${it.costPer1000},${it.quantity}"
-                    }
-        )
-    }
-
-    private fun loadPrimers() {
-        val file = File(baseDir, "primer.csv")
-        if (!file.exists()) return
-
-        file.readLines().drop(1).forEach {
+        return file.readLines().drop(1).mapNotNull {
             val p = it.split(",")
-            if (p.size < 5) return@forEach
+            if (p.size != 5) return@mapNotNull null
 
-            primers.add(
-                Primer(p[0], p[1], p[2], p[3].toDouble(), p[4].toInt())
+            Primer(
+                p[0],
+                p[1],
+                parsePrimerSize(p[2]),
+                p[3].toDouble(),
+                p[4].toInt()
             )
         }
     }
 
-    // ================= CASES =================
+    // =========================================================
+    // CASE / CALIBER FIX
+    // =========================================================
 
-    override fun addCase(
-        brand: String,
-        caliber: String,
-        timesFired: Int,
-        cost: Double,
-        qty: Int
-    ) {
+    fun loadCases(): List<Case> {
         val file = File(baseDir, "case.csv")
-        val id = IdGenerator.nextId(file, brand)
+        if (!file.exists()) return emptyList()
 
-        cases.add(Case(id, brand, caliber, timesFired, cost, qty))
-        saveCases()
-    }
-
-    override fun getCases() = cases.toList()
-
-    private fun saveCases() {
-        File(baseDir, "case.csv").writeText(
-            "ID,Brand,Caliber,TimesFired,CostPerUnit,Quantity\n" +
-                    cases.joinToString("\n") {
-                        "${it.id},${it.brand},${it.caliber},${it.timesFired},${it.costPerUnit},${it.quantity}"
-                    }
-        )
-    }
-
-    private fun loadCases() {
-        val file = File(baseDir, "case.csv")
-        if (!file.exists()) return
-
-        file.readLines().drop(1).forEach {
+        return file.readLines().drop(1).mapNotNull {
             val p = it.split(",")
-            if (p.size < 6) return@forEach
+            if (p.size != 6) return@mapNotNull null
 
-            cases.add(
-                Case(
-                    p[0], p[1], p[2],
-                    p[3].toInt(),
-                    p[4].toDouble(),
-                    p[5].toInt()
-                )
+            Case(
+                p[0],
+                p[1],
+                p[2],
+                p[3].toInt(),
+                p[4].toDouble(),
+                p[5].toInt()
             )
         }
     }
 
-    // ================= ROUNDS =================
+    // =========================================================
+    // ROUND FIX (cartridgeName ONLY — NO caliber)
+    // =========================================================
 
-    override fun addRound(
-        caliber: String,
-        bulletId: String,
-        powderId: String,
-        primerId: String,
-        caseId: String,
-        chargeGr: Double,
-        coalIn: Double,
-        qty: Int
-    ) {
-        val id = "RND-${System.currentTimeMillis()}"
-
-        rounds.add(
-            LoadedRound(
-                id,
-                caliber,
-                bulletId,
-                powderId,
-                primerId,
-                caseId,
-                chargeGr,
-                coalIn,
-                qty,
-                System.currentTimeMillis()
-            )
-        )
-
-        File(baseDir, "round.csv").writeText(
-            "ID,Caliber,BulletID,PowderID,PrimerID,CaseID,ChargeGr,CoalIn,Quantity,Date\n" +
-                    rounds.joinToString("\n") {
-                        "${it.id},${it.caliber},${it.bulletId},${it.powderId},${it.primerId},${it.caseId},${it.powderChargeGr},${it.coalIn},${it.quantity},${it.dateEpoch}"
-                    }
-        )
-    }
-
-    override fun getRounds() = rounds.toList()
-
-    private fun loadAll() {
-        loadBullets()
-        loadPowders()
-        loadPrimers()
-        loadCases()
-        loadRounds()
-    }
-
-    private fun loadRounds() {
+    fun loadRounds(): List<LoadedRound> {
         val file = File(baseDir, "round.csv")
-        if (!file.exists()) return
+        if (!file.exists()) return emptyList()
 
-        file.readLines().drop(1).forEach {
+        return file.readLines().drop(1).mapNotNull {
             val p = it.split(",")
-            if (p.size < 10) return@forEach
+            if (p.size != 10) return@mapNotNull null
 
-            rounds.add(
-                LoadedRound(
-                    p[0], p[1], p[2], p[3], p[4], p[5],
-                    p[6].toDouble(),
-                    p[7].toDouble(),
-                    p[8].toInt(),
-                    p[9].toLong()
-                )
+            LoadedRound(
+                p[0],
+                p[1], // cartridgeName
+                p[2],
+                p[3],
+                p[4],
+                p[5],
+                p[6].toDouble(),
+                p[7].toDouble(),
+                p[8].toInt(),
+                p[9].toLong()
             )
         }
     }

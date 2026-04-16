@@ -1,16 +1,16 @@
-package io.csv
+package com.drakkar.reloading.io.csv
 
 import com.drakkar.reloading.core.model.LoadedRound
 
 object CsvExporter {
 
     fun exportRounds(rounds: List<LoadedRound>): String {
-        val header = "id,caliber,bulletId,powderId,primerId,caseId,powderChargeGr,coalIn,quantity,dateEpoch"
+        val header = "ID,Cartridge,BulletID,PowderID,PrimerID,CaseID,Charge,COAL,Qty,Date"
 
-        val rows = rounds.joinToString("\n") {
-            "${it.id},${it.caliber},${it.bulletId},${it.powderId},${it.primerId},${it.caseId},${it.powderChargeGr},${it.coalIn},${it.quantity},${it.dateEpoch}"
+        val body = rounds.joinToString("\n") {
+            "${it.id},${it.cartridgeName},${it.bulletId},${it.powderId},${it.primerId},${it.caseId},${it.powderChargeGr},${it.coalIn},${it.quantity},${it.dateEpoch}"
         }
 
-        return "$header\n$rows"
+        return "$header\n$body"
     }
 }

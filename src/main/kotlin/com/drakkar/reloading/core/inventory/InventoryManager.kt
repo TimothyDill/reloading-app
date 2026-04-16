@@ -1,10 +1,12 @@
 package com.drakkar.reloading.core.inventory
 
-import com.drakkar.reloading.core.config.AppPaths
+import com.drakkar.reloading.core.data.CartridgeRepository
 import com.drakkar.reloading.core.model.*
 import java.io.File
 
 class InventoryManager {
+
+    private val baseDir = File(System.getProperty("user.dir"), "data")
 
     private val bullets = mutableListOf<Bullet>()
     private val powders = mutableListOf<Powder>()
@@ -13,74 +15,37 @@ class InventoryManager {
     private val rounds = mutableListOf<LoadedRound>()
 
     init {
-        AppPaths.dataDir().mkdirs()
-        bootstrap()
+        baseDir.mkdirs()
         loadAll()
-        println("InventoryManager READY -> ${AppPaths.dataDir().absolutePath}")
+        println("InventoryManager READY -> ${baseDir.absolutePath}")
     }
 
-    // =========================
-    // ID GENERATOR
-    // =========================
-
-    private fun generateId(existing: List<String>, brand: String): String {
-        val prefix = brand.trim()
-            .uppercase()
-            .filter { it.isLetter() }
-            .take(3)
-            .padEnd(3, 'X')
-
-        val maxSeq = existing
-            .mapNotNull { it.split("-").getOrNull(1)?.toIntOrNull() }
-            .maxOrNull() ?: 0
-
-        val next = (maxSeq + 1).toString().padStart(3, '0')
-        return "$prefix-$next"
-    }
-
-    // =========================
-    // BOOTSTRAP
-    // =========================
-
-    private fun bootstrap() {
-        header(AppPaths.bulletFile(), "ID,Brand,Name,WeightGr,DiameterIn,CostPerUnit,Quantity")
-        header(AppPaths.powderFile(), "ID,Brand,Name,CostPerLb,GrainsPerLb,QuantityLb")
-        header(AppPaths.primerFile(), "ID,Brand,Type,CostPer1000,Quantity")
-        header(AppPaths.caseFile(), "ID,Brand,Caliber,TimesFired,CostPerUnit,Quantity")
-        header(AppPaths.roundFile(), "ID,Caliber,BulletID,PowderID,PrimerID,CaseID,ChargeGr,CoalIn,Quantity,Date")
-    }
-
-    private fun header(file: File, content: String) {
-        if (!file.exists()) {
-            file.parentFile?.mkdirs()
-            file.writeText(content + "\n")
-        }
-    }
-
-    // =========================
+    // ======================================================
     // BULLETS
-    // =========================
+    // ======================================================
 
-    fun addBullet(
-        brand: String,
-        name: String,
-        weightGr: Double,
-        diameterIn: Double,
-        costPerUnit: Double,
-        quantity: Int
-    ) {
-        val id = generateId(bullets.map { it.id }, brand)
-
-        bullets.add(Bullet(id, brand, name, weightGr, diameterIn, costPerUnit, quantity))
+    fun addBullet(bullet: Bullet) {
+        bullets.add(bullet)
         saveBullets()
-
-        println("Saved Bullet -> $id (${AppPaths.bulletFile().absolutePath})")
     }
 
     fun getBullets() = bullets.toList()
 
+    fun updateBullet(id: String, update: Bullet.() -> Bullet) {
+        val index = bullets.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            bullets[index] = bullets[index].update()
+            saveBullets()
+        }
+    }
+
+    fun deleteBullet(id: String) {
+        bullets.removeIf { it.id == id }
+        saveBullets()
+    }
+
     private fun saveBullets() {
-        AppPaths.bulletFile().writeText(
+        File(baseDir, "bullet.csv").writeText(
             "ID,Brand,Name,WeightGr,DiameterIn,CostPerUnit,Quantity\n" +
                     bullets.joinToString("\n") {
                         "${it.id},${it.brand},${it.name},${it.weightGr},${it.diameterIn},${it.costPerUnit},${it.quantity}"
@@ -89,16 +54,17 @@ class InventoryManager {
     }
 
     private fun loadBullets() {
-        val f = AppPaths.bulletFile()
-        if (!f.exists()) return
+        val file = File(baseDir, "bullet.csv")
+        if (!file.exists()) return
         bullets.clear()
 
-        f.readLines().drop(1).forEach {
+        file.readLines().drop(1).forEach {
             val p = it.split(",")
             if (p.size != 7) return@forEach
 
             bullets.add(
-                Bullet(p[0], p[1], p[2],
+                Bullet(
+                    p[0], p[1], p[2],
                     p[3].toDouble(),
                     p[4].toDouble(),
                     p[5].toDouble(),
@@ -108,26 +74,32 @@ class InventoryManager {
         }
     }
 
-    // =========================
+    // ======================================================
     // POWDER
-    // =========================
+    // ======================================================
 
-    fun addPowder(
-        brand: String,
-        name: String,
-        costPerLb: Double,
-        grainsPerLb: Int,
-        quantityLb: Double
-    ) {
-        val id = generateId(powders.map { it.id }, brand)
-        powders.add(Powder(id, brand, name, costPerLb, grainsPerLb, quantityLb))
+    fun addPowder(powder: Powder) {
+        powders.add(powder)
         savePowders()
     }
 
     fun getPowders() = powders.toList()
 
+    fun updatePowder(id: String, update: Powder.() -> Powder) {
+        val index = powders.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            powders[index] = powders[index].update()
+            savePowders()
+        }
+    }
+
+    fun deletePowder(id: String) {
+        powders.removeIf { it.id == id }
+        savePowders()
+    }
+
     private fun savePowders() {
-        AppPaths.powderFile().writeText(
+        File(baseDir, "powder.csv").writeText(
             "ID,Brand,Name,CostPerLb,GrainsPerLb,QuantityLb\n" +
                     powders.joinToString("\n") {
                         "${it.id},${it.brand},${it.name},${it.costPerLb},${it.grainsPerLb},${it.quantityLb}"
@@ -136,16 +108,17 @@ class InventoryManager {
     }
 
     private fun loadPowders() {
-        val f = AppPaths.powderFile()
-        if (!f.exists()) return
+        val file = File(baseDir, "powder.csv")
+        if (!file.exists()) return
         powders.clear()
 
-        f.readLines().drop(1).forEach {
+        file.readLines().drop(1).forEach {
             val p = it.split(",")
             if (p.size != 6) return@forEach
 
             powders.add(
-                Powder(p[0], p[1], p[2],
+                Powder(
+                    p[0], p[1], p[2],
                     p[3].toDouble(),
                     p[4].toInt(),
                     p[5].toDouble()
@@ -154,25 +127,32 @@ class InventoryManager {
         }
     }
 
-    // =========================
+    // ======================================================
     // PRIMERS
-    // =========================
+    // ======================================================
 
-    fun addPrimer(
-        brand: String,
-        type: String,
-        costPer1000: Double,
-        quantity: Int
-    ) {
-        val id = generateId(primers.map { it.id }, brand)
-        primers.add(Primer(id, brand, type, costPer1000, quantity))
+    fun addPrimer(primer: Primer) {
+        primers.add(primer)
         savePrimers()
     }
 
     fun getPrimers() = primers.toList()
 
+    fun updatePrimer(id: String, update: Primer.() -> Primer) {
+        val index = primers.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            primers[index] = primers[index].update()
+            savePrimers()
+        }
+    }
+
+    fun deletePrimer(id: String) {
+        primers.removeIf { it.id == id }
+        savePrimers()
+    }
+
     private fun savePrimers() {
-        AppPaths.primerFile().writeText(
+        File(baseDir, "primer.csv").writeText(
             "ID,Brand,Type,CostPer1000,Quantity\n" +
                     primers.joinToString("\n") {
                         "${it.id},${it.brand},${it.type},${it.costPer1000},${it.quantity}"
@@ -181,40 +161,52 @@ class InventoryManager {
     }
 
     private fun loadPrimers() {
-        val f = AppPaths.primerFile()
-        if (!f.exists()) return
+        val file = File(baseDir, "primer.csv")
+        if (!file.exists()) return
         primers.clear()
 
-        f.readLines().drop(1).forEach {
+        file.readLines().drop(1).forEach {
             val p = it.split(",")
             if (p.size != 5) return@forEach
 
             primers.add(
-                Primer(p[0], p[1], p[2], p[3].toDouble(), p[4].toInt())
+                Primer(
+                    p[0],
+                    p[1],
+                    PrimerSize.fromString(p[2]),
+                    p[3].toDouble(),
+                    p[4].toInt()
+                )
             )
         }
     }
 
-    // =========================
+    // ======================================================
     // CASES
-    // =========================
+    // ======================================================
 
-    fun addCase(
-        brand: String,
-        caliber: String,
-        timesFired: Int,
-        costPerUnit: Double,
-        quantity: Int
-    ) {
-        val id = generateId(cases.map { it.id }, brand)
-        cases.add(Case(id, brand, caliber, timesFired, costPerUnit, quantity))
+    fun addCase(case: Case) {
+        cases.add(case)
         saveCases()
     }
 
     fun getCases() = cases.toList()
 
+    fun updateCase(id: String, update: Case.() -> Case) {
+        val index = cases.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            cases[index] = cases[index].update()
+            saveCases()
+        }
+    }
+
+    fun deleteCase(id: String) {
+        cases.removeIf { it.id == id }
+        saveCases()
+    }
+
     private fun saveCases() {
-        AppPaths.caseFile().writeText(
+        File(baseDir, "case.csv").writeText(
             "ID,Brand,Caliber,TimesFired,CostPerUnit,Quantity\n" +
                     cases.joinToString("\n") {
                         "${it.id},${it.brand},${it.caliber},${it.timesFired},${it.costPerUnit},${it.quantity}"
@@ -223,16 +215,19 @@ class InventoryManager {
     }
 
     private fun loadCases() {
-        val f = AppPaths.caseFile()
-        if (!f.exists()) return
+        val file = File(baseDir, "case.csv")
+        if (!file.exists()) return
         cases.clear()
 
-        f.readLines().drop(1).forEach {
+        file.readLines().drop(1).forEach {
             val p = it.split(",")
             if (p.size != 6) return@forEach
 
             cases.add(
-                Case(p[0], p[1], p[2],
+                Case(
+                    p[0],
+                    p[1],
+                    p[2],
                     p[3].toInt(),
                     p[4].toDouble(),
                     p[5].toInt()
@@ -241,12 +236,12 @@ class InventoryManager {
         }
     }
 
-    // =========================
-    // ROUNDS
-    // =========================
+    // ======================================================
+    // ROUND BUILDING (FULL FLOW FIXED)
+    // ======================================================
 
-    fun addRound(
-        caliber: String,
+    fun loadRounds(
+        cartridgeName: String,
         bulletId: String,
         powderId: String,
         primerId: String,
@@ -255,23 +250,59 @@ class InventoryManager {
         coalIn: Double,
         quantity: Int
     ) {
-        val id = "RND-${System.currentTimeMillis()}"
+        val cartridge = CartridgeRepository.findByName(cartridgeName)
+            ?: error("Invalid cartridge: $cartridgeName")
 
-        rounds.add(
-            LoadedRound(
-                id,
-                caliber,
-                bulletId,
-                powderId,
-                primerId,
-                caseId,
-                powderChargeGr,
-                coalIn,
-                quantity,
-                System.currentTimeMillis()
-            )
+        val bullet = bullets.find { it.id == bulletId }
+            ?: error("Bullet not found")
+
+        val powder = powders.find { it.id == powderId }
+            ?: error("Powder not found")
+
+        val primer = primers.find { it.id == primerId }
+            ?: error("Primer not found")
+
+        val case = cases.find { it.id == caseId }
+            ?: error("Case not found")
+
+        require(bullet.diameterIn == cartridge.bulletDiameterIn) {
+            "Bullet incompatible"
+        }
+
+        require(primer.type == cartridge.primerType) {
+            "Primer incompatible"
+        }
+
+        require(bullet.quantity >= quantity)
+        require(primer.quantity >= quantity)
+        require(case.quantity >= quantity)
+
+        bullet.quantity -= quantity
+        primer.quantity -= quantity
+        case.quantity -= quantity
+
+        val powderUsedLb = (powderChargeGr * quantity) / 7000.0
+        powder.quantityLb -= powderUsedLb
+
+        val round = LoadedRound(
+            id = "RND-${System.currentTimeMillis()}",
+            cartridgeName = cartridge.name,
+            bulletId = bulletId,
+            powderId = powderId,
+            primerId = primerId,
+            caseId = caseId,
+            powderChargeGr = powderChargeGr,
+            coalIn = coalIn,
+            quantity = quantity,
+            dateEpoch = System.currentTimeMillis()
         )
 
+        rounds.add(round)
+
+        saveBullets()
+        savePowders()
+        savePrimers()
+        saveCases()
         saveRounds()
     }
 
@@ -285,7 +316,7 @@ class InventoryManager {
 
         return """
             Round ${round.id}
-            Caliber: ${round.caliber}
+            Cartridge: ${round.cartridgeName}
             Bullet: $b
             Powder: $p
             Primer: $pr
@@ -298,12 +329,38 @@ class InventoryManager {
     }
 
     private fun saveRounds() {
-        AppPaths.roundFile().writeText(
-            "ID,Caliber,BulletID,PowderID,PrimerID,CaseID,ChargeGr,CoalIn,Quantity,Date\n" +
+        File(baseDir, "round.csv").writeText(
+            "ID,Cartridge,BulletID,PowderID,PrimerID,CaseID,Charge,COAL,Qty,Date\n" +
                     rounds.joinToString("\n") {
-                        "${it.id},${it.caliber},${it.bulletId},${it.powderId},${it.primerId},${it.caseId},${it.powderChargeGr},${it.coalIn},${it.quantity},${it.dateEpoch}"
+                        "${it.id},${it.cartridgeName},${it.bulletId},${it.powderId},${it.primerId},${it.caseId},${it.powderChargeGr},${it.coalIn},${it.quantity},${it.dateEpoch}"
                     }
         )
+    }
+
+    private fun loadRounds() {
+        val file = File(baseDir, "round.csv")
+        if (!file.exists()) return
+        rounds.clear()
+
+        file.readLines().drop(1).forEach {
+            val p = it.split(",")
+            if (p.size != 10) return@forEach
+
+            rounds.add(
+                LoadedRound(
+                    p[0],
+                    p[1],
+                    p[2],
+                    p[3],
+                    p[4],
+                    p[5],
+                    p[6].toDouble(),
+                    p[7].toDouble(),
+                    p[8].toInt(),
+                    p[9].toLong()
+                )
+            )
+        }
     }
 
     private fun loadAll() {
@@ -312,26 +369,5 @@ class InventoryManager {
         loadPrimers()
         loadCases()
         loadRounds()
-    }
-
-    private fun loadRounds() {
-        val f = AppPaths.roundFile()
-        if (!f.exists()) return
-        rounds.clear()
-
-        f.readLines().drop(1).forEach {
-            val p = it.split(",")
-            if (p.size != 10) return@forEach
-
-            rounds.add(
-                LoadedRound(
-                    p[0], p[1], p[2], p[3], p[4], p[5],
-                    p[6].toDouble(),
-                    p[7].toDouble(),
-                    p[8].toInt(),
-                    p[9].toLong()
-                )
-            )
-        }
     }
 }
