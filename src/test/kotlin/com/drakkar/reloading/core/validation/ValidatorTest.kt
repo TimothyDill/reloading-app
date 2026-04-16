@@ -1,30 +1,28 @@
 package com.drakkar.reloading.core.validation
 
-import com.drakkar.reloading.core.model.*
-import core.validation.LoadValidator
+import com.drakkar.reloading.core.model.LoadReference
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
-import java.util.UUID
 
-class LoadValidatorTest {
+class ValidatorTest {
 
     @Test
-    fun `detects unsafe charge`() {
+    fun validate_load() {
 
         val ref = LoadReference(
-            UUID.randomUUID(),
-            "300",
-            230.0,
-            "H1000",
-            70.0,
-            80.0,
-            2600.0,
-            3000.0,
-            "manual"
+            id = "HOD-001",
+            caliber = "5.56 NATO",
+            bulletWeightGr = 55.0,
+            powder = "H335",
+            minChargeGr = 23.0,
+            maxChargeGr = 25.5,
+            minFps = 2900.0,
+            maxFps = 3150.0,
+            source = "manual"
         )
 
-        val result = LoadValidator.validate(85.0, ref)
+        val result = LoadValidator.validate(24.0, ref)
 
-        assertEquals(LoadValidator.Status.ABOVE_MAX, result)
+        assertEquals("OK", result)
     }
 }

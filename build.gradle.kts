@@ -1,6 +1,14 @@
+application {
+    mainClass.set("com.drakkar.reloading.MainKt")
+}
+
 plugins {
     kotlin("jvm") version "1.9.22"
     application
+}
+
+tasks.withType<JavaExec> {
+    jvmArgs = listOf("-Xms256m", "-Xmx1024m")
 }
 
 group = "com.drakkar"
@@ -16,11 +24,6 @@ dependencies {
 
     // JUnit 5
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
-}
-
-application {
-    // Update if your main class differs
-    mainClass.set("com.drakkar.reloading.core.simulation.MainKt")
 }
 
 tasks.withType<Test> {

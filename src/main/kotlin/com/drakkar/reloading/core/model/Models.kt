@@ -1,9 +1,8 @@
 package com.drakkar.reloading.core.model
 
-import java.util.UUID
-
 data class Bullet(
-    val id: UUID,
+    val id: String,
+    val brand: String,
     val name: String,
     val weightGr: Double,
     val diameterIn: Double,
@@ -12,22 +11,25 @@ data class Bullet(
 )
 
 data class Powder(
-    val id: UUID,
+    val id: String,
+    val brand: String,
     val name: String,
     val costPerLb: Double,
-    val grainsPerLb: Int = 7000,
+    val grainsPerLb: Int,
     val quantityLb: Double
 )
 
 data class Primer(
-    val id: UUID,
+    val id: String,
+    val brand: String,
     val type: String,
     val costPer1000: Double,
     val quantity: Int
 )
 
 data class Case(
-    val id: UUID,
+    val id: String,
+    val brand: String,
     val caliber: String,
     val timesFired: Int,
     val costPerUnit: Double,
@@ -35,26 +37,14 @@ data class Case(
 )
 
 data class LoadedRound(
-    val id: UUID,
+    val id: String,
     val caliber: String,
-    val bulletId: UUID,
-    val powderId: UUID,
-    val primerId: UUID,
-    val caseId: UUID,
+    val bulletId: String,
+    val powderId: String,
+    val primerId: String,
+    val caseId: String,
     val powderChargeGr: Double,
     val coalIn: Double,
     val quantity: Int,
     val dateEpoch: Long
-)
-
-data class LoadReference(
-    val id: UUID,
-    val caliber: String,
-    val bulletWeightGr: Double,
-    val powder: String,
-    val minChargeGr: Double,
-    val maxChargeGr: Double,
-    val minFps: Double,
-    val maxFps: Double,
-    val source: String
 )

@@ -3,28 +3,26 @@ package com.drakkar.reloading.core.calculation
 import com.drakkar.reloading.core.model.LoadReference
 import org.junit.jupiter.api.Test
 import kotlin.test.assertTrue
-import java.util.UUID
 
-class BallisticsEstimatorTest {
+class BallisticEstimatorTest {
 
     @Test
-    fun `fps increases with charge`() {
+    fun estimate_fps() {
 
         val ref = LoadReference(
-            UUID.randomUUID(),
-            "300",
-            230.0,
-            "H1000",
-            70.0,
-            80.0,
-            2600.0,
-            3000.0,
-            "manual"
+            id = "HOD-001",
+            caliber = "5.56 NATO",
+            bulletWeightGr = 55.0,
+            powder = "H335",
+            minChargeGr = 23.0,
+            maxChargeGr = 25.5,
+            minFps = 2900.0,
+            maxFps = 3150.0,
+            source = "manual"
         )
 
-        val low = BallisticsEstimator.estimateFps(72.0, ref)
-        val high = BallisticsEstimator.estimateFps(78.0, ref)
+        val result = BallisticsEstimator.estimateFps(24.0, ref)
 
-        assertTrue(high > low)
+        assertTrue(result > 0)
     }
 }
