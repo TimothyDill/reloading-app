@@ -1,12 +1,13 @@
+// src/main/kotlin/com/drakkar/reloading/core/model/LoadReference.kt
+
 package com.drakkar.reloading.core.model
 
 data class LoadReference(
-    val id: String,
     val caliber: String,
-    val bulletWeightGr: Double,
+    val bulletWeight: Double,
     val powder: String,
-    val minChargeGr: Double,
-    val maxChargeGr: Double,
+    val minCharge: Double,
+    val maxCharge: Double,
     val minFps: Double,
     val maxFps: Double,
     val source: String

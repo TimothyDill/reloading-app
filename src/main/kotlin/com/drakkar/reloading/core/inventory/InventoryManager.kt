@@ -21,11 +21,56 @@ class InventoryManager {
     }
 
     // ======================================================
+    // ID GENERATORS
+    // ======================================================
+
+    private fun nextBulletId(brand: String): String {
+        val prefix = brand.take(3).uppercase()
+        val existing = bullets
+            .filter { it.brand.equals(brand, ignoreCase = true) }
+            .mapNotNull { it.id.substringAfter("$prefix-").toIntOrNull() }
+
+        val next = if (existing.isEmpty()) 1 else existing.max() + 1
+        return "%s-%03d".format(prefix, next)
+    }
+
+    private fun nextPowderId(brand: String): String {
+        val prefix = brand.take(3).uppercase()
+        val existing = powders
+            .filter { it.brand.equals(brand, ignoreCase = true) }
+            .mapNotNull { it.id.substringAfter("$prefix-").toIntOrNull() }
+
+        val next = if (existing.isEmpty()) 1 else existing.max() + 1
+        return "%s-%03d".format(prefix, next)
+    }
+
+    private fun nextPrimerId(brand: String): String {
+        val prefix = brand.take(3).uppercase()
+        val existing = primers
+            .filter { it.brand.equals(brand, ignoreCase = true) }
+            .mapNotNull { it.id.substringAfter("$prefix-").toIntOrNull() }
+
+        val next = if (existing.isEmpty()) 1 else existing.max() + 1
+        return "%s-%03d".format(prefix, next)
+    }
+
+    private fun nextCaseId(brand: String): String {
+        val prefix = brand.take(3).uppercase()
+        val existing = cases
+            .filter { it.brand.equals(brand, ignoreCase = true) }
+            .mapNotNull { it.id.substringAfter("$prefix-").toIntOrNull() }
+
+        val next = if (existing.isEmpty()) 1 else existing.max() + 1
+        return "%s-%03d".format(prefix, next)
+    }
+
+    // ======================================================
     // BULLETS
     // ======================================================
 
     fun addBullet(bullet: Bullet) {
-        bullets.add(bullet)
+        val assigned = bullet.copy(id = nextBulletId(bullet.brand))
+        bullets.add(assigned)
         saveBullets()
     }
 
@@ -79,7 +124,8 @@ class InventoryManager {
     // ======================================================
 
     fun addPowder(powder: Powder) {
-        powders.add(powder)
+        val assigned = powder.copy(id = nextPowderId(powder.brand))
+        powders.add(assigned)
         savePowders()
     }
 
@@ -132,7 +178,8 @@ class InventoryManager {
     // ======================================================
 
     fun addPrimer(primer: Primer) {
-        primers.add(primer)
+        val assigned = primer.copy(id = nextPrimerId(primer.brand))
+        primers.add(assigned)
         savePrimers()
     }
 
@@ -186,7 +233,8 @@ class InventoryManager {
     // ======================================================
 
     fun addCase(case: Case) {
-        cases.add(case)
+        val assigned = case.copy(id = nextCaseId(case.brand))
+        cases.add(assigned)
         saveCases()
     }
 
@@ -237,7 +285,7 @@ class InventoryManager {
     }
 
     // ======================================================
-    // ROUND BUILDING (FULL FLOW FIXED)
+    // ROUNDS
     // ======================================================
 
     fun loadRounds(
@@ -253,25 +301,10 @@ class InventoryManager {
         val cartridge = CartridgeRepository.findByName(cartridgeName)
             ?: error("Invalid cartridge: $cartridgeName")
 
-        val bullet = bullets.find { it.id == bulletId }
-            ?: error("Bullet not found")
-
-        val powder = powders.find { it.id == powderId }
-            ?: error("Powder not found")
-
-        val primer = primers.find { it.id == primerId }
-            ?: error("Primer not found")
-
-        val case = cases.find { it.id == caseId }
-            ?: error("Case not found")
-
-        require(bullet.diameterIn == cartridge.bulletDiameterIn) {
-            "Bullet incompatible"
-        }
-
-        require(primer.type == cartridge.primerType) {
-            "Primer incompatible"
-        }
+        val bullet = bullets.find { it.id == bulletId } ?: error("Bullet not found")
+        val powder = powders.find { it.id == powderId } ?: error("Powder not found")
+        val primer = primers.find { it.id == primerId } ?: error("Primer not found")
+        val case = cases.find { it.id == caseId } ?: error("Case not found")
 
         require(bullet.quantity >= quantity)
         require(primer.quantity >= quantity)
@@ -370,4 +403,106 @@ class InventoryManager {
         loadCases()
         loadRounds()
     }
+
+    fun deleteComponent(type: String, id: String): Boolean {
+        return when (type.lowercase()) {
+            "bullet" -> bullets.removeIf { it.id == id }.also { if (it) saveBullets() }
+            "powder" -> powders.removeIf { it.id == id }.also { if (it) savePowders() }
+            "primer" -> primers.removeIf { it.id == id }.also { if (it) savePrimers() }
+            "case" -> cases.removeIf { it.id == id }.also { if (it) saveCases() }
+            else -> false
+        }
+    }
+
+    fun modifyComponent(type: String, id: String, field: String, newValue: String): Boolean {
+        when (type.lowercase()) {
+
+            "bullet" -> {
+                val item = bullets.find { it.id == id } ?: return false
+                val updated = when (field.lowercase()) {
+                    "id", "1" -> item.copy(id = newValue)
+                    "brand", "2" -> item.copy(brand = newValue)
+                    "name", "3" -> item.copy(name = newValue)
+                    "weightgr", "4" -> item.copy(weightGr = newValue.toDouble())
+                    "diameterin", "5" -> item.copy(diameterIn = newValue.toDouble())
+                    "costperunit", "6" -> item.copy(costPerUnit = newValue.toDouble())
+                    "quantity", "7" -> item.copy(quantity = newValue.toInt())
+                    else -> return false
+                }
+                bullets[bullets.indexOf(item)] = updated
+                saveBullets()
+                return true
+            }
+
+            "powder" -> {
+                val item = powders.find { it.id == id } ?: return false
+                val updated = when (field.lowercase()) {
+                    "id", "1" -> item.copy(id = newValue)
+                    "brand", "2" -> item.copy(brand = newValue)
+                    "name", "3" -> item.copy(name = newValue)
+                    "costperlb", "4" -> item.copy(costPerLb = newValue.toDouble())
+                    "grainsperlb", "5" -> item.copy(grainsPerLb = newValue.toInt())
+                    "quantitylb", "6" -> item.copy(quantityLb = newValue.toDouble())
+                    else -> return false
+                }
+                powders[powders.indexOf(item)] = updated
+                savePowders()
+                return true
+            }
+
+            "primer" -> {
+                val item = primers.find { it.id == id } ?: return false
+                val updated = when (field.lowercase()) {
+                    "id", "1" -> item.copy(id = newValue)
+                    "brand", "2" -> item.copy(brand = newValue)
+                    "type", "3" -> item.copy(type = PrimerSize.fromString(newValue))
+                    "costper1000", "4" -> item.copy(costPer1000 = newValue.toDouble())
+                    "quantity", "5" -> item.copy(quantity = newValue.toInt())
+                    else -> return false
+                }
+                primers[primers.indexOf(item)] = updated
+                savePrimers()
+                return true
+            }
+
+            "case" -> {
+                val item = cases.find { it.id == id } ?: return false
+                val updated = when (field.lowercase()) {
+                    "id", "1" -> item.copy(id = newValue)
+                    "brand", "2" -> item.copy(brand = newValue)
+                    "caliber", "3" -> item.copy(caliber = newValue)
+                    "timesfired", "4" -> item.copy(timesFired = newValue.toInt())
+                    "costperunit", "5" -> item.copy(costPerUnit = newValue.toDouble())
+                    "quantity", "6" -> item.copy(quantity = newValue.toInt())
+                    else -> return false
+                }
+                cases[cases.indexOf(item)] = updated
+                saveCases()
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun generateIdForBrand(brand: String, existingIds: List<String>): String {
+        // Normalize brand prefix to 3 characters
+        val prefix = brand
+            .uppercase()
+            .take(3)
+            .padEnd(3, '_')
+
+        // Find all IDs that start with this prefix
+        val numbers = existingIds
+            .filter { it.startsWith(prefix) }
+            .mapNotNull {
+                it.substringAfter("-").toIntOrNull()
+            }
+
+        // Determine next number
+        val nextNumber = if (numbers.isEmpty()) 1 else (numbers.max() + 1)
+
+        // Format as PREFIX-###
+        return "%s-%03d".format(prefix, nextNumber)
+    }
+
 }

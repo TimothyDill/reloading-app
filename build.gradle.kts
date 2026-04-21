@@ -1,39 +1,33 @@
-application {
-    mainClass.set("com.drakkar.reloading.MainKt")
-}
+// build.gradle.kts
 
 plugins {
     kotlin("jvm") version "1.9.22"
-    application
-}
-
-tasks.withType<JavaExec> {
-    jvmArgs = listOf("-Xms256m", "-Xmx1024m")
+    id("org.jetbrains.compose") version "1.6.10"
 }
 
 group = "com.drakkar"
 version = "1.0.0"
 
 repositories {
+    google()
     mavenCentral()
 }
 
 dependencies {
-    // Kotlin test support
-    testImplementation(kotlin("test"))
+    implementation(compose.desktop.currentOs)
 
-    // JUnit 5
+    testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
 }
 
-tasks.withType<Test> {
-    testLogging {
-        events("passed", "failed", "skipped", "standardOut", "standardError")
-        showExceptions = true
-        showCauses = true
-        showStackTraces = true
-        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+compose.desktop {
+    application {
+        mainClass = "com.drakkar.reloading.ui.MainKt"
     }
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 kotlin {
